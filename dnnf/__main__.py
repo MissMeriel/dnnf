@@ -46,18 +46,12 @@ def main(
     # os.setpgrp()
     sys.setrecursionlimit(5000)
     phi = parse_property(property, format=prop_format, args=extra_args)
-    print("FALSIFYING:", phi)
     for name, network in networks.items():
-        print(f"PARSING NETWORK: {network.__str__()}")
         dnn = parse_network(network, net_format="onnx")
         if kwargs["debug"]:
             print(f"Network {name}:")
             dnn.pprint()
-            print()
-        print(f"CONCRETIZING: {phi}")
         phi.concretize(**{name: dnn})
-    print()
-    print(f"FALSIFYING...")
     start_t = time.time()
     result = falsify(phi, **kwargs)
     end_t = time.time()
@@ -71,6 +65,7 @@ def main(
     falsification_time = result["time"]
     print(f"  falsification time: {falsification_time:.4f}")
     print(f"  total time: {end_t - start_t:.4f}", flush=True)
+    print(f"  restarts: {result['restarts']}", flush=True)
 
 
 def __main__():

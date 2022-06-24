@@ -31,12 +31,12 @@ def get_concrete_inputs(output_vars, kwargs):
     for y in output_vars:
         for a in y.args:
             if a.is_concrete:
-                a = torch.from_numpy(a.value)
+                b = torch.from_numpy(np.copy(a.value))
                 if kwargs.get("cuda", False):
-                    a.to("cuda")
+                    b.to("cuda")
                 # else:
                 #     a.to("cpu")
-                outvars.append(a)
+                outvars.append(b)
     return tuple(outvars)
 
 
@@ -95,8 +95,14 @@ def falsify(
     counter_example = asyncio.run(wait_for_first(tasks, **kwargs))
     end_t = time.time()
     logger.info(f"falsification time: {end_t - start_t:.4f}")
-
-    return {"violation": counter_example, "time": end_t - start_t}
+    try:
+        return {
+            "violation": counter_example[0],
+            "restarts": counter_example[1],
+            "time": end_t - start_t,
+        }
+    except TypeError as e:
+        return {"violation": None, "restarts": method_n_starts, "time": end_t - start_t}
 
 
 async def wait_for_first(tasks, sequential=False, **kwargs):
@@ -120,7 +126,6 @@ async def falsify_model(
 
     start_i = 0
     loop = asyncio.get_event_loop()
-    print(f"FALSIFY_MODEL {_TASK_ID=} {start_i=}")
     outvars = get_concrete_inputs(model.prop.output_vars, kwargs)
     outvars = tuple(i.numpy() for i in outvars)
     while n_starts < 0 or start_i < n_starts:
@@ -133,24 +138,20 @@ async def falsify_model(
                 model.prop.output_vars, model.prop.op_graph(counter_example, *outvars)
             ):
                 logger.debug("%s -> %s", network, result)
-            return counter_example
+            return (counter_example, start_i)
         await asyncio.sleep(0)  # yield to other tasks
         start_i += 1
         if (start_i) % kwargs.get("restart_log_freq", 10) == 0:
             logger.info("RESTART(%s): %d", _TASK_ID, start_i)
 
 
-def pgd(model: FalsificationModel, n_steps=1000, **kwargs):
-    print(f"PERFORMING PGD {n_steps=}")
+def pgd(model: FalsificationModel, n_steps=100, **kwargs):
     logger = logging.getLogger(__name__)
 
     if kwargs.get("cuda", False):
         model.model.to("cuda")
     x = model.sample()
     outvars = get_concrete_inputs(model.prop.output_vars, kwargs)
-    # print(f"{len(outvars)=}")
-    # for o in range(len(outvars)):
-    #     print(f"{outvars[o]=}")
     for step_i in range(n_steps):
         x.requires_grad = True
         y = model(x, *outvars)
