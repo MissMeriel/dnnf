@@ -186,7 +186,11 @@ def build_conv(
 
     pad_layer = nn.ZeroPad2d((p_left, p_right, p_top, p_bottom))
     conv_layer = nn.Conv2d(
-        input_shape[0], output_shape[0], (k_h, k_w), (s_h, s_w), (0, 0),
+        input_shape[0],
+        output_shape[0],
+        (k_h, k_w),
+        (s_h, s_w),
+        (0, 0),
     )
     conv_layer.weight.data = torch.from_numpy(weights).float().permute(3, 2, 0, 1)
     conv_layer.bias.data = torch.from_numpy(bias).float()

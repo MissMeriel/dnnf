@@ -168,7 +168,8 @@ def parse_verification_output(stdout_lines, stderr_lines):
         result = "!"
     print("  result:", result)
     print(
-        "  computed falsification time:", computed_falsification_time,
+        "  computed falsification time:",
+        computed_falsification_time,
     )
     print("  falsification time:", falsification_time)
     print("  total time:", total_time)
